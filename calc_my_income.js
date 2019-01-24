@@ -25,7 +25,7 @@ const TAX_GRADIENT = [{
   adjustAmount: 2520
 }, {
   amount: 300000,
-  rate: 0.1,
+  rate: 0.2,
   adjustAmount: 16920
 }, {
   amount: 420000,
@@ -44,12 +44,16 @@ const TAX_GRADIENT = [{
   rate: 0.45,
   adjustAmount: 181920
 }];
+const MAX_PROVIDENT = 6096; // 公积金缴纳上限
+const MAX_INSURANCE_PROVIT = 25401; // 五险一金缴纳上限 25401
 
 const hasDeduction = (curIndex, deductStart, deductEnd) => (curIndex >= deductStart && curIndex <= deductEnd);
+const formatMoney = (money) => parseFloat(money.toFixed(2));
 
 const calcTax = ({ oriIncome, threshold = 5000, insuranceRate = 0.222, providentRate = 0.12, specicalDeduction = 0, deductStart = 0, deductEnd = 11}) => {
-  const insurance = oriIncome * insuranceRate;
-  const provident = oriIncome * providentRate * 2;
+  const pivotAmount = Math.min(oriIncome, MAX_INSURANCE_PROVIT);
+  const insurance = pivotAmount * insuranceRate;
+  const provident = pivotAmount * providentRate * 2;
   const result = [];
   let totalIncome = 0;
   let totalIncomeBeforeTax = 0;
@@ -72,7 +76,7 @@ const calcTax = ({ oriIncome, threshold = 5000, insuranceRate = 0.222, provident
         const diff = totalIncomeBeforeTax - TAX_GRADIENT[i].amount;
         if (diff < 0) {
           taxRate = TAX_GRADIENT[i].rate;
-          tax = parseFloat((totalIncomeBeforeTax * TAX_GRADIENT[i].rate - totalTax - TAX_GRADIENT[i].adjustAmount).toFixed(2));
+          tax = totalIncomeBeforeTax * TAX_GRADIENT[i].rate - totalTax - TAX_GRADIENT[i].adjustAmount;
           totalTax += tax;
           break;
         }
@@ -83,13 +87,13 @@ const calcTax = ({ oriIncome, threshold = 5000, insuranceRate = 0.222, provident
     result.push({
       [month]: {
         '税前月收入': oriIncome,
-        '免征额': threshold,
-        '五险一金': insurance,
-        '住房公积金': provident,
-        '应纳税所得额': shouldTaxAmount,
+        '起征点': threshold,
+        '五险一金': formatMoney(insurance),
+        '住房公积金': formatMoney(provident),
+        '应纳税所得额': formatMoney(shouldTaxAmount),
         '适用税率': `${taxRate * 100}%`,
-        '应缴个人所得税': tax,
-        '实际到手收入': oriIncome - insurance - tax
+        '应缴个人所得税': formatMoney(tax),
+        '实际到手收入': formatMoney(oriIncome - insurance - tax)
       }
     });
   })
@@ -97,6 +101,6 @@ const calcTax = ({ oriIncome, threshold = 5000, insuranceRate = 0.222, provident
 }
 
 console.log(calcTax({
-  oriIncome: 20000,
+  oriIncome: 30000,
   specicalDeduction: 2000
 }));
